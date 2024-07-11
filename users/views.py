@@ -6,12 +6,18 @@ from users.serializers import (PlatFormUserUpdateSerializer, PlatFormUserSeriali
 from users import logger
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from users.custom_permissions import IsStaffUSer
+from users.custom_permissions import IsStaffUSerReadOnly
 from rest_framework.views import APIView
 from rest_framework.decorators import action
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
+
+import requests
+from django.conf import settings
+from social_django.utils import psa
+from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.decorators import permission_classes
 
 
 
@@ -23,7 +29,7 @@ class LoginUserViewSet(viewsets.ViewSet):
         username = request.data["username"]
         password = request.data["password"]
         user = authenticate(request, username=username, password=password)
-        print("user", user)
+        logger.debug("user login")
         if user:
             refresh = RefreshToken.for_user(user=user)
             tokens = {
@@ -38,7 +44,7 @@ class LoginUserViewSet(viewsets.ViewSet):
                 tokens['refresh'], 
                 httponly=True, 
                 secure=False,  # Set to False for development, True for production
-                samesite='Lax',  # Set according to your needs
+                samesite='strict',  # Set according to your needs
                 max_age=60*5 
             )
             return response
@@ -76,21 +82,30 @@ class TokenRefreshViewSet(viewsets.ViewSet, TokenRefreshView):
 
 
 class PlatFormUserViewSet(viewsets.ViewSet):
+    pagination_class = LimitOffsetPagination  # Apply the custom pagination class
 
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            print("staff user")
-            permission_classes = [permissions.IsAdminUser, IsStaffUSer]
-        elif self.action in ['create', 'update', 'partial_update', 'destroy']:
-            permission_classes = [permissions.IsAdminUser]
-        return [permission() for permission in permission_classes]
+    permission_classes = [IsStaffUSerReadOnly]
+
+    # def get_permissions(self):
+    #     if self.action in ['list', 'retrieve']:
+    #         permission_classes = [permissions.IsAuthenticated]
+    #     elif self.action in ['update', 'partial_update', 'destroy']:
+    #         permission_classes = [permissions.IsAdminUser]
+    #     print("permission classes", permission_classes)
+    #     return [permission() for permission in permission_classes]
     
-    
+
     def list(self, request):
-        qs = PlatformUser.objects.all()
-        logger.info("inside view func ")
-        serialzier = PlatFormUserSerializer(qs, many=True)
-        return Response(serialzier.data)
+        queryset = PlatformUser.objects.all()
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(queryset, request)
+        if page is not None:
+            serializer = PlatFormUserSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        serializer = PlatFormUserSerializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    
 
     def retrieve(self, request, pk=None):
         user = self.get_object(pk)
@@ -120,6 +135,8 @@ class PlatFormUserViewSet(viewsets.ViewSet):
 
 class PostViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = LimitOffsetPagination  # Apply the custom pagination class
+
 
 
     def get_queryset(self):
@@ -130,10 +147,14 @@ class PostViewSet(viewsets.ModelViewSet):
         return qs
 
     def list(self, request):
-        qs = self.get_queryset()
-        qs = qs.filter(created_by=request.user)
-        serialzier = PostSerializer(qs, many=True)
-        return Response(serialzier.data)
+        queryset = self.get_queryset()
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(queryset, request)
+        if page is not None:
+            serializer = PostSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        serializer = PostSerializer(queryset, many=True)
+        return Response(serializer.data)
 
     def retrieve(self, request, pk=None):
         user = self.get_object(pk)
@@ -170,6 +191,39 @@ class PostViewSet(viewsets.ModelViewSet):
 
 class OauthGitHubView(APIView):
 
+    # @psa('social:complete')
     def get(self, request):
-        print("params", request.GET)
-        return Response(status=status.HTTP_200_OK)
+        code = request.GET.get('code')
+        client_id = settings.SOCIAL_AUTH_GITHUB_KEY
+        client_secret = settings.SOCIAL_AUTH_GITHUB_SECRET
+
+        # Exchange code for access token
+        token_response = requests.post('https://github.com/login/oauth/access_token', data={
+            'client_id': client_id,
+            'client_secret': client_secret,
+            'code': code
+        }, headers={'Accept': 'application/json'})
+        
+        token_json = token_response.json()
+        access_token = token_json.get('access_token')
+
+        print("access_token", access_token)
+        # if not access_token:
+        #     return Response({'error': 'Failed to obtain access token'}, status=status.HTTP_400_BAD_REQUEST)
+        #  # Authenticate and create user
+        # user = request.backend.do_auth(access_token)
+
+        headers = {
+                    'Accept': 'application/vnd.github+json',
+                    'Authorization': 'Bearer {}'.format(access_token),
+                    'X-GitHub-Api-Version': '2022-11-28',
+                }
+
+        response = requests.get('https://api.github.com/user', headers=headers)
+
+        return Response(response.json())
+        if user:
+            return Response("login in sucess with user creation", status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Authentication failed'}, status=status.HTTP_400_BAD_REQUEST)
+        

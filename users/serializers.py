@@ -25,7 +25,7 @@ class PlatFormUserUpdateSerializer(ModelSerializer):
     class Meta:
         model = PlatformUser
         fields = ['first_name', 'last_name', 
-                  'is_staff', 'is_active']
+                  'is_staff', 'is_active', 'is_superuser']
         
     def update(self, instance, validated_data):
         

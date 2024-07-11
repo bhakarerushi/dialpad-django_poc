@@ -47,6 +47,9 @@ INSTALLED_APPS = [
 
     # apps
     'users',
+
+    #social auth
+    'social_django',
 ]
 
 MIDDLEWARE = [
@@ -58,6 +61,10 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
+    #social login middleware
+    'social_django.middleware.SocialAuthExceptionMiddleware',
+
+
     #custom middleware
     'config.middlewares.custom_middleware.SimpleMiddlware'
 ]
@@ -67,7 +74,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -75,6 +82,10 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+
+                # social django context_processors
+                'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -82,10 +93,26 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend', # This is the default that allows us to log in via username
-    # 'account.authentication.EmailAuthBackend'
-]
+# AUTHENTICATION_BACKENDS = [
+#     'social_core.backends.github.GithubOAuth2',
+#     'django.contrib.auth.backends.ModelBackend', # This is the default that allows us to log in via username
+# ]
+
+SOCIAL_AUTH_GITHUB_KEY = 'Ov23liPnzU5AIcaCRiZD'
+SOCIAL_AUTH_GITHUB_SECRET = 'dad161326bba8b1ecf94945ff1e1f65c213b1b79'
+
+
+# SOCIAL_AUTH_PIPELINE = (
+#     'social_core.pipeline.social_auth.social_details',
+#     'social_core.pipeline.social_auth.social_uid',
+#     'social_core.pipeline.social_auth.auth_allowed',
+#     'social_core.pipeline.social_auth.social_user',
+#     'social_core.pipeline.user.get_username',
+#     'social_core.pipeline.user.create_user',
+#     'social_core.pipeline.social_auth.associate_user',
+#     'social_core.pipeline.social_auth.load_extra_data',
+#     'social_core.pipeline.user.user_details',
+# )
 
 
 # Database
@@ -173,7 +200,7 @@ AUTH_USER_MODEL = 'users.PlatFormUser'
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=10),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -190,3 +217,5 @@ SIMPLE_JWT = {
     # 'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
     # 'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
+
+# SOCIAL_AUTH_URL_NAMESPACE = 'social'
