@@ -1,15 +1,40 @@
-# DialPad POC
-
+### DialPad POC
 
 ## Prerequisites
 
 Ensure you have Python and `virtualenv` installed on your Ubuntu system.
+
+### move to your project folder
+
+cd DIALPAD_POC_DJANGO
 
 ### create virtual env 
 python -m venv <env_name>
 
 ### activate virtual env
 source venv/bin/activate
+
+### create virtual env file and install dependensies
+pip  install -r requiremnets.txt
+
+### create main project folder
+mkdir <main_project_folder_name>
+cd <main_project_folder_name>
+
+### create django project
+django-admin startproject config .
+
+### add rest_framework app to django settings.py Installed apps
+
+### run django inbuild migrations to database
+python manage.py makemigrations
+python manage.py migrate
+
+### create required apps and follow below steps.
+python manage.py startapp <app_name>
+Add app_name (users) to Installed_Apps in settings.py file
+
+Define routes in config.urls.py
 
 ### Move to Project root directory and start python development server
 python manage.py runserver

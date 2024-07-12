@@ -18,6 +18,7 @@ from django.conf import settings
 from social_django.utils import psa
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.decorators import permission_classes
+from test_package import test_method
 
 
 
@@ -227,3 +228,16 @@ class OauthGitHubView(APIView):
         else:
             return Response({'error': 'Authentication failed'}, status=status.HTTP_400_BAD_REQUEST)
         
+
+
+class TestView(APIView):
+    # permission_classes = [permissions.IsAuthenticated]
+
+    # @psa('social:complete')
+    def get(self, request):
+        print("user_perm", permissions.IsAuthenticated.has_permission(self, request, None))
+        print("user obj", request.user._meta.get_fields())
+        print("user dict", request.user.__dict__.keys())
+        if request.user.is_staff :
+            return Response({"data":"Hello user !!"})
+        return Response({"data":"Hello Admin !!"})
